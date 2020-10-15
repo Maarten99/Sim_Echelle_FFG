@@ -8,10 +8,15 @@ import numpy as np
 import math
 import random
 import matplotlib.pyplot as py
+import tournamentSim as sim
 
-def sim_player(init_ffg_lvl, init_real_lvl, num_sim = 1000, adv_spread = 25):
+def sim_player0(init_ffg_lvl, init_real_lvl, num_sim = 1000, adv_spread = 25):
+    #Simple simulation
     #Adversaries are created using a normal distribution around the current public level
-    #TODO : model tournaments in depth
+    #init_ffg_lvl is the initial public level of the player
+    #init_real_lvl is the true level of the player
+    #num_sim is the number of players to simulate
+    #adv_spread is the standard deviation of adversaries compared to the player level
     
     matchs = []
     lvl_history = [[]]
@@ -51,20 +56,42 @@ def sim_player(init_ffg_lvl, init_real_lvl, num_sim = 1000, adv_spread = 25):
             
     return (matchs,lvl_history,adv_history)
 
+def sim_player_mcmahon(init_ffg_lvl, init_real_lvl, num_sim = 1000, rounds=6, adj = True):
+    matchs = []
+    lvl_history = [[]]
+    
+    for i in range(num_sim):
+        ffg_lvl = init_ffg_lvl
+        real_lvl = init_real_lvl
+        matchs.append(0)
+        lvl_history.append([ffg_lvl])
+        
+        while(ffg_lvl < real_lvl):
+            matchs[i] += rounds;
+            ffg_lvl = sim.mcmahon0(rounds,ffg_lvl,real_lvl,adj)
+            lvl_history.append(ffg_lvl)
+    
+    return (matchs, lvl_history)
+    
 num_sim = 200
 elos = []
+moyenne = []
 avg_50 = []
 avg_75 = []
 avg_90 = []
-for elo in range(-1000, 300, 10):
+for elo in range(-1000, 300, 5):
     
-    (matchs,lvl_history, adv_history) = sim_player(elo,elo+400,num_sim, 25)
+    #(matchs,lvl_history, adv_history) = sim_player0(elo,elo+400,num_sim, 25)
+    (matchs, lvl_history) = sim_player_mcmahon(elo, elo+200,num_sim, 6, True)
+    
     sort_m = sorted(matchs)
+    idx_50 = math.floor(num_sim*50/100)
     idx_75 = math.floor(num_sim*75/100)
     idx_90 = math.floor(num_sim*90/100)
     
     elos.append(elo)
-    avg_50.append(np.mean(matchs))
+    moyenne.append(np.mean(matchs))
+    avg_50.append(sort_m[idx_50])
     avg_75.append(sort_m[idx_75])
     avg_90.append(sort_m[idx_90])
 
@@ -81,11 +108,12 @@ for elo in range(-1000, 300, 10):
 #py.plot(lvl_history[idx])
 #idx= matchs.index(max(matchs))
 #py.plot(lvl_history[idx])
-line1, = py.plot(elos, avg_50, 'b-', label = "Moyenne", linewidth = 2)
+line1, = py.plot(elos, moyenne, 'b-', label = "Moyenne", linewidth = 2)
 line2, = py.plot(elos, avg_75, 'g--', label = "Pire 25%")
 line3, = py.plot(elos, avg_90, 'r--', label = "Pire 10%")
+line4, = py.plot(elos, avg_50, 'b--', label = "Médiane")
 py.ylabel("Parties")
 py.xlabel("Elo de départ")
-py.title("Nombre de parties nécessaires pour monter un joueur sous-évalué de 4 pierres")
-py.legend(handles=[line1, line2, line3], loc='upper left')
+py.title("Nombre de parties nécessaires pour monter un joueur sous-évalué de 2 pierres")
+py.legend(handles=[line1, line4, line2, line3], loc='upper left')
 py.show()
